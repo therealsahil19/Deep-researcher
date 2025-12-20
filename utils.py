@@ -42,6 +42,25 @@ def parse_action_input(raw_input: str) -> str:
         return ""
     
     cleaned = raw_input.strip()
+
+    # Remove markdown code blocks if present (e.g. ```json ... ```)
+    # This handles cases where the model wraps the input in code blocks
+    if '```' in cleaned:
+        # Match content inside ```...```
+        # Use DOTALL to match across newlines
+        match = re.search(r'```(?:\w+)?\s*(.*?)\s*```', cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(1).strip()
+        else:
+            # Fallback: simple replace if the regex fails for some reason
+            cleaned = cleaned.replace("```", "").strip()
+            # Also remove language identifier if it remains (e.g. "json\n...")
+            if cleaned.lower().startswith("json"):
+                cleaned = cleaned[4:].strip()
+
+    # Remove accidentally captured "Action Input:" prefix
+    if cleaned.lower().startswith("action input:"):
+        cleaned = cleaned[13:].strip()
     
     # Try to parse as JSON array: ["query"] or ["query1", "query2"]
     if cleaned.startswith('[') and cleaned.endswith(']'):
@@ -119,7 +138,7 @@ def validate_search_query(query: str) -> tuple[bool, str]:
         return False, f"Query too short ({len(query)} chars): '{query}'"
     
     # Check if query is just punctuation/brackets
-    if query in ['[', ']', '{', '}', '(', ')', '[{', '{}', '[]']:
+    if query in ['[', ']', '{', '}', '(', ')', '[{', '{}', '[]', '```', '``']:
         return False, f"Query is just punctuation: '{query}'"
     
     # Check if query looks like incomplete JSON
@@ -249,16 +268,31 @@ def extract_date_range_from_query(query):
     """
     import calendar
     
-    # Pattern for "Month Year" (e.g., "November 2025")
-    month_year_pattern = r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})'
+    # Pattern for "Month Year" (e.g., "November 2025" or "Nov 2025")
+    month_year_pattern = r'(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})'
     match = re.search(month_year_pattern, query, re.IGNORECASE)
     
     if match:
-        month_name = match.group(1).capitalize()
-        year = int(match.group(2))
+        # Normalize month name
+        raw_month = match.group(1).lower()
+        month_map = {
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        }
         
-        # Convert month name to number
-        month_num = list(calendar.month_name).index(month_name)
+        # Handle full names by taking first 3 chars
+        month_key = raw_month[:3]
+        month_num = month_map.get(month_key)
+
+        if not month_num:
+             # Fallback to standard parsing if needed (shouldn't happen with regex above)
+             try:
+                 month_name = raw_month.capitalize()
+                 month_num = list(calendar.month_name).index(month_name)
+             except ValueError:
+                 return None, None
+
+        year = int(match.group(2))
         
         # Get the last day of the month
         _, last_day = calendar.monthrange(year, month_num)
@@ -566,8 +600,12 @@ def stream_deep_research(messages, api_keys, model_id=None, num_results=None):
 
                 else:
                     # Model tried to use a tool it doesn't have access to or hallucinates
-                    yield f"\n\n*Model attempted to use {action_name} but key is missing.*\n\n"
-                    break
+                    msg = f"Model attempted to use {action_name} but tool is unavailable."
+                    logger.warning(msg)
+                    yield f"\n\n*⚠️ {msg}*\n\n"
+
+                    # Feed error back to model instead of breaking
+                    observation = f"SYSTEM ERROR: Tool '{action_name}' is not available. Available tools: {available_tools}. Please use an available tool."
 
                 # Update history
                 internal_messages.append({"role": "assistant", "content": full_response})
