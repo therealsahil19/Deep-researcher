@@ -9,7 +9,7 @@ A powerful, autonomous research assistant that performs deep, multi-step investi
 -   **Hybrid Search Model**:
     -   **Discovery (Exa)**: Broad landscape analysis and semantic resource discovery.
     -   **Verification (Tavily)**: Targeted fact-checking and precise data retrieval.
--   **Intelligent Temporal Grounding**: Automatically detects date-specific queries (e.g., "latest events in December 2025") and applies dynamic search filters to ensure zero-day freshness.
+-   **Intelligent Temporal Grounding**: Automatically detects date-specific queries (e.g., "latest events in Dec 2025") and applies dynamic search filters to ensure zero-day freshness. Supports short month names (Jan, Feb, etc.).
 -   **Multi-Model Versatility**: Integrated with OpenRouter to support top-tier models:
     -   **Xiaomi MiMo-V2-Flash** (State-of-the-Art Deep Research Model)
     -   **Tongyi DeepResearch 30B** (Research-optimized)
