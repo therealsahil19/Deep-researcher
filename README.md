@@ -11,6 +11,7 @@ A powerful, autonomous research assistant that performs deep, multi-step investi
     -   **Verification (Tavily)**: Targeted fact-checking and precise data retrieval.
 -   **Intelligent Temporal Grounding**: Automatically detects date-specific queries (e.g., "latest events in December 2025") and applies dynamic search filters to ensure zero-day freshness.
 -   **Multi-Model Versatility**: Integrated with OpenRouter to support top-tier models:
+    -   **Xiaomi MiMo-V2-Flash** (State-of-the-Art Deep Research Model)
     -   **Tongyi DeepResearch 30B** (Research-optimized)
     -   **GPT-4o** & **Claude 3.5 Sonnet**
     -   **Gemini 2.0 Flash** & **Llama 3.1 70B**
@@ -79,7 +80,7 @@ streamlit run app.py
 
 ## 📋 Configuration
 Modify `config.py` to:
-- Change the **Default Model** (current: Tongyi DeepResearch 30B).
+- Change the **Default Model** (current: Xiaomi MiMo-V2-Flash).
 - Adjust **Search Depth** (min/max results).
 - Set **Rate Limits** to manage API costs.
 

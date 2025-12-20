@@ -57,11 +57,14 @@ class TestExtractDateRangeFromQuery:
         assert start is None
         assert end is None
     
-    def test_invalid_date_format(self):
-        """Test query with invalid date format returns None."""
+    def test_date_extraction_with_slashes(self):
+        """Test query with date containing slashes extracts the year."""
+        # The regex r'\b(202[4-9]|203\d)\b' matches 2025 in "11/2025" because "/" acts as a separator.
+
         start, end = utils.extract_date_range_from_query("Release in 11/2025")
-        # The regex doesn't match MM/YYYY, so it should return None
-        assert start is None or end is None  # Depends on implementation
+        # Now we expect it to find 2025
+        assert start == "2025-01-01"
+        assert end == "2025-12-31"
 
 
 class TestGeneratePdf:
