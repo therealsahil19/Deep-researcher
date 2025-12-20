@@ -1,0 +1,5 @@
+streamlit
+openai
+fpdf2
+tavily-python
+exa-py
