@@ -27,6 +27,37 @@ logger = logging.getLogger(__name__)
 _USAGE_CACHE = {}
 
 # =============================================================================
+# PRE-COMPILED REGEX PATTERNS
+# =============================================================================
+
+# Matches content inside markdown code blocks: ```...```
+RE_CODE_BLOCK = re.compile(r'```(?:\w+)?\s*(.*?)\s*```', re.DOTALL)
+
+# Matches quoted strings: "value" or 'value'
+RE_QUOTED_STRING = re.compile(r'["\']([^"\']+)["\']')
+
+# Checks if a query is just incomplete JSON/punctuation
+RE_INCOMPLETE_JSON = re.compile(r'^[\[\{\(\"\']$')
+
+# Matches "Month Year" dates (e.g. November 2025)
+RE_MONTH_YEAR = re.compile(
+    r'(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})',
+    re.IGNORECASE
+)
+
+# Matches years (2024-2039)
+RE_YEAR_ONLY = re.compile(r'\b(202[4-9]|203\d)\b')
+
+# Matches ReAct Action line
+RE_ACTION_PATTERN = re.compile(r"Action:\s*(search[_\-\s]?discovery|search[_\-\s]?fact)", re.IGNORECASE)
+
+# Matches ReAct Action Input line
+RE_ACTION_INPUT_PATTERN = re.compile(r"Action Input:\s*(.+?)(?:\n|$)", re.IGNORECASE)
+
+# Matches hyphens or spaces for normalizing action names
+RE_NORMALIZE_ACTION = re.compile(r'[\-\s]')
+
+# =============================================================================
 # ACTION INPUT PARSING AND VALIDATION
 # =============================================================================
 
@@ -52,7 +83,7 @@ def parse_action_input(raw_input: str) -> str:
     if '```' in cleaned:
         # Match content inside ```...```
         # Use DOTALL to match across newlines
-        match = re.search(r'```(?:\w+)?\s*(.*?)\s*```', cleaned, re.DOTALL)
+        match = RE_CODE_BLOCK.search(cleaned)
         if match:
             cleaned = match.group(1).strip()
         else:
@@ -103,7 +134,7 @@ def parse_action_input(raw_input: str) -> str:
             # Not valid JSON, extract content between braces
             inner = cleaned[1:-1].strip()
             # Try to find a quoted value
-            quote_match = re.search(r'["\']([^"\']+)["\']', inner)
+            quote_match = RE_QUOTED_STRING.search(inner)
             if quote_match:
                 result = quote_match.group(1).strip()
                 logger.info(f"Extracted quoted value from braces: {result}")
@@ -146,7 +177,7 @@ def validate_search_query(query: str) -> tuple[bool, str]:
         return False, f"Query is just punctuation: '{query}'"
     
     # Check if query looks like incomplete JSON
-    if re.match(r'^[\[\{\(\"\']$', query):
+    if RE_INCOMPLETE_JSON.match(query):
         return False, f"Query looks like incomplete JSON: '{query}'"
     
     return True, ""
@@ -278,9 +309,7 @@ def extract_date_range_from_query(query):
     Extracts date range from a query string.
     Returns (start_date, end_date) in YYYY-MM-DD format, or (None, None) if no date found.
     """
-    # Pattern for "Month Year" (e.g., "November 2025" or "Nov 2025")
-    month_year_pattern = r'(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})'
-    match = re.search(month_year_pattern, query, re.IGNORECASE)
+    match = RE_MONTH_YEAR.search(query)
     
     if match:
         # Normalize month name
@@ -313,8 +342,7 @@ def extract_date_range_from_query(query):
         return start_date, end_date
     
     # Pattern for just a year (e.g., "2025")
-    year_pattern = r'\b(202[4-9]|203\d)\b'  # Match years 2024-2039
-    year_match = re.search(year_pattern, query)
+    year_match = RE_YEAR_ONLY.search(query)
     
     if year_match:
         year = int(year_match.group(1))
@@ -549,10 +577,9 @@ def stream_deep_research(messages, api_keys, model_id=None, num_results=None):
             
             # Parse for Action - case insensitive and handles variations
             # Matches: search_discovery, search-discovery, searchdiscovery, etc.
-            action_pattern = r"Action:\s*(search[_\-\s]?discovery|search[_\-\s]?fact)"
-            action_match = re.search(action_pattern, clean_response, re.IGNORECASE)
+            action_match = RE_ACTION_PATTERN.search(clean_response)
             # More flexible input matching - capture everything after "Action Input:" until end of line
-            input_match = re.search(r"Action Input:\s*(.+?)(?:\n|$)", clean_response, re.IGNORECASE)
+            input_match = RE_ACTION_INPUT_PATTERN.search(clean_response)
             
             # Debug logging
             logger.info(f"Step {step_count}: Action match: {action_match.group(0) if action_match else 'None'}")
@@ -561,7 +588,7 @@ def stream_deep_research(messages, api_keys, model_id=None, num_results=None):
             if action_match and input_match:
                 # Normalize action name (remove hyphens/spaces, lowercase)
                 raw_action = action_match.group(1).lower()
-                action_name = re.sub(r'[\-\s]', '_', raw_action)  # Normalize to underscore format
+                action_name = RE_NORMALIZE_ACTION.sub('_', raw_action)  # Normalize to underscore format
                 
                 # Use robust parsing for action input
                 raw_tool_input = input_match.group(1).strip()
