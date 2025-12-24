@@ -60,9 +60,17 @@ with st.sidebar:
     st.markdown("---")
 
     st.subheader("🔑 API Keys")
-    openrouter_api_key = st.text_input("OpenRouter API Key", type="password", help="Required for the LLM.")
-    tavily_api_key = st.text_input("Tavily API Key", type="password", help="Optional. Required for Fact Search.")
-    exa_api_key = st.text_input("Exa API Key", type="password", help="Optional. Required for Discovery Search.")
+
+    # Helper to display key input with status
+    def render_key_input(label, env_var, help_text):
+        key_input = st.text_input(label, type="password", help=help_text)
+        if not key_input and os.environ.get(env_var):
+            st.caption(f"✅ Loaded from environment (`{env_var}`)")
+        return key_input
+
+    openrouter_api_key = render_key_input("OpenRouter API Key", "OPENROUTER_API_KEY", "Required for the LLM.")
+    tavily_api_key = render_key_input("Tavily API Key", "TAVILY_API_KEY", "Optional. Required for Fact Search.")
+    exa_api_key = render_key_input("Exa API Key", "EXA_API_KEY", "Optional. Required for Discovery Search.")
 
     # Prioritize user input, fallback to environment variables
     def get_api_key(user_input, env_var):
@@ -92,7 +100,7 @@ with st.sidebar:
                 st.toast("Research history cleared!", icon="✅")
                 st.rerun()
     else:
-        st.caption("No research history yet.")
+        st.info("No research history yet. Start a new query to build your library!")
 
 # Main Content Area
 st.title("Deep Research Agent 🔍")
@@ -103,13 +111,16 @@ prompt = st.text_area("Enter your research topic or question:", height=120, plac
 
 col1, col2 = st.columns([0.15, 0.85])
 with col1:
-    start_button = st.button("🚀 Start Research", type="primary", use_container_width=True)
+    has_openrouter = bool(api_keys["openrouter"])
+    help_text = "Click to start research" if has_openrouter else "⚠️ OpenRouter API Key required in sidebar"
+    start_button = st.button("🚀 Start Research", type="primary", use_container_width=True, disabled=not has_openrouter, help=help_text)
 
 # Research Logic
 if start_button:
     if not prompt or not prompt.strip():
         st.error("Please enter a valid research topic.")
     elif not api_keys["openrouter"]:
+        # Double check in case of state weirdness, though button should be disabled
         st.error("Please provide an OpenRouter API Key in the sidebar.")
     else:
         # Reset state
