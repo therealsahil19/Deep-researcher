@@ -85,9 +85,12 @@ with st.sidebar:
                 st.caption(f"*{session['timestamp']}*")
                 st.markdown(session['report'][:500] + "..." if len(session['report']) > 500 else session['report'])
         
-        if st.button("🗑️ Clear History", use_container_width=True):
-            st.session_state.research_history = []
-            st.rerun()
+        with st.popover("🗑️ Clear History", use_container_width=True):
+            st.markdown("Are you sure you want to delete all research history? This action cannot be undone.")
+            if st.button("Yes, delete everything", type="primary", use_container_width=True):
+                st.session_state.research_history = []
+                st.toast("Research history cleared!", icon="✅")
+                st.rerun()
     else:
         st.caption("No research history yet.")
 
