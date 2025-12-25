@@ -92,6 +92,13 @@ with st.sidebar:
             with st.expander(f"📄 {session['query'][:40]}...", expanded=False):
                 st.caption(f"*{session['timestamp']}*")
                 st.markdown(session['report'][:500] + "..." if len(session['report']) > 500 else session['report'])
+                if st.button("👀 View Full Report", key=f"history_view_{i}", use_container_width=True):
+                    st.session_state.final_report = session['report']
+                    st.session_state.reasoning_content = "> *Reasoning content is not available for historical sessions.*"
+                    st.session_state.research_complete = True
+                    st.session_state.verification_report = ""
+                    st.session_state.user_prompt = session['query']
+                    st.toast("Report loaded into main view!", icon="✅")
         
         with st.popover("🗑️ Clear History", use_container_width=True):
             st.markdown("Are you sure you want to delete all research history? This action cannot be undone.")
