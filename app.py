@@ -107,7 +107,26 @@ st.title("Deep Research Agent 🔍")
 st.caption("Comprehensive Research Mode — Maximum compute + reasoning + search")
 
 # Input Section
-prompt = st.text_area("Enter your research topic or question:", height=120, placeholder="e.g., Generate a complete research report on LLMs released in November 2025")
+if "user_prompt" not in st.session_state:
+    st.session_state.user_prompt = ""
+
+def set_prompt(text):
+    st.session_state.user_prompt = text
+
+# Example Prompts
+st.caption("Try an example:")
+ex_col1, ex_col2, ex_col3 = st.columns(3)
+if ex_col1.button("🤖 Humanoid Robots 2025", use_container_width=True):
+    set_prompt("Market analysis of humanoid robots in 2025")
+    st.rerun()
+if ex_col2.button("🔋 Solid-State Batteries", use_container_width=True):
+    set_prompt("Latest advancements in solid-state batteries")
+    st.rerun()
+if ex_col3.button("🧠 Open vs Closed LLMs", use_container_width=True):
+    set_prompt("Comparison of open source LLMs vs proprietary models")
+    st.rerun()
+
+prompt = st.text_area("Enter your research topic or question:", height=120, placeholder="e.g., Generate a complete research report on LLMs released in November 2025", key="user_prompt")
 
 col1, col2 = st.columns([0.15, 0.85])
 with col1:
